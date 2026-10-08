@@ -1,0 +1,17 @@
+# Build artifacts
+*.exe
+*.o
+*.obj
+*.a
+*.so
+*.dll
+*.dylib
+
+# Python bytecode & caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Temporary test directories
+test_conformance_root/
+hexdump_root/

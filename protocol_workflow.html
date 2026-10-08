@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HOOH v1 — Protocol Architecture & Interactive Workflow Map</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #090d16;
+            --bg-surface: #101726;
+            --bg-surface-elevated: #162033;
+            --bg-card: #1c273e;
+            --border-subtle: #23314d;
+            --border-strong: #3b82f6;
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+            --text-muted: #64748b;
+            --color-normal: #10b981;
+            --color-step: #38bdf8;
+            --color-stream-err: #f97316;
+            --color-conn-err: #ef4444;
+            --color-code-bug: #06b6d4;
+            --color-spec-bug: #c084fc;
+            --glow-normal: rgba(16, 185, 129, 0.3);
+            --glow-step: rgba(56, 189, 248, 0.3);
+            --glow-stream-err: rgba(249, 115, 22, 0.3);
+            --glow-conn-err: rgba(239, 68, 68, 0.3);
+            --glow-code-bug: rgba(6, 182, 212, 0.4);
+            --glow-spec-bug: rgba(192, 132, 252, 0.4);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Top Navigation Header */
+        header {
+            background: var(--bg-surface);
+            border-bottom: 1px solid var(--border-subtle);
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 50;
+            flex-shrink: 0;
+        }
+
+        .brand-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .badge-protocol {
+            background: rgba(56, 189, 248, 0.15);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            color: var(--color-step);
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.2rem 0.6rem;
+            border-radius: 9999px;
+            letter-spacing: 0.05em;
+        }
+
+        h1 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .view-tabs {
+            display: flex;
+            background: var(--bg-surface-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: 0.2rem;
+            gap: 0.2rem;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-dim);
+            padding: 0.4rem 0.8rem;
+            font-size: 0.8rem;
+            font-weight: 500;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-main);
+        }
+
+        .tab-btn.active {
+            background: var(--color-step);
+            color: #000000;
+            font-weight: 600;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+
+        .search-input {
+            background: var(--bg-surface-elevated);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-main);
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            width: 220px;
+            outline: none;
+        }
+
+        .search-input:focus {
+            border-color: var(--color-step);
+        }
+
+        /* Main Workspace: Left Canvas + Right Drawer */
+        .workspace {
+            display: flex;
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Interactive Canvas Area */
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            background: radial-gradient(circle at 50% 50%, #111a2e 0%, var(--bg-base) 100%);
+            overflow: hidden;
+            cursor: grab;
+        }
+
+        .canvas-container:active {
+            cursor: grabbing;
+        }
+
+        svg#graphCanvas {
+            width: 100%;
+            height: 100%;
+            user-select: none;
+        }
+
+        /* Canvas Floating Controls */
+        .canvas-controls {
+            position: absolute;
+            bottom: 1.5rem;
+            left: 1.5rem;
+            display: flex;
+            background: rgba(16, 23, 38, 0.85);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: 0.3rem;
+            gap: 0.3rem;
+            z-index: 20;
+        }
+
+        .ctrl-btn {
+            background: var(--bg-surface-elevated);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-dim);
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+
+        .ctrl-btn:hover {
+            color: var(--text-main);
+            border-color: var(--color-step);
+        }
+
+        /* Canvas Legend Overlay */
+        .canvas-legend {
+            position: absolute;
+            top: 1.5rem;
+            left: 1.5rem;
+            background: rgba(16, 23, 38, 0.85);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            font-size: 0.75rem;
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .legend-row {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            color: var(--text-dim);
+        }
+
+        .legend-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+
+        /* Inspector Slide-over Panel */
+        .inspector-panel {
+            width: 480px;
+            background: var(--bg-surface);
+            border-left: 1px solid var(--border-subtle);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            z-index: 40;
+            box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
+            overflow-y: auto;
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .inspector-panel.collapsed {
+            transform: translateX(100%);
+            display: none;
+        }
+
+        .panel-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            background: var(--bg-surface-elevated);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .panel-title-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .panel-category-badge {
+            display: inline-block;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+            width: fit-content;
+        }
+
+        .panel-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+        }
+
+        .panel-close-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.25rem;
+            cursor: pointer;
+            padding: 0.2rem 0.5rem;
+        }
+
+        .panel-close-btn:hover {
+            color: var(--text-main);
+        }
+
+        .panel-body {
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .section-box {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .section-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+        }
+
+        .spec-quote-card {
+            background: rgba(0, 0, 0, 0.3);
+            border-left: 3px solid var(--color-step);
+            border-radius: 4px;
+            padding: 0.75rem 1rem;
+            font-size: 0.85rem;
+            color: #e2e8f0;
+            line-height: 1.5;
+        }
+
+        .wire-card {
+            background: #060911;
+            border: 1px solid #1a253a;
+            border-radius: 6px;
+            padding: 0.75rem;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.8rem;
+            color: #38bdf8;
+            overflow-x: auto;
+        }
+
+        .code-container {
+            background: #050811;
+            border: 1px solid #1e293b;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .code-header {
+            background: #0f172a;
+            padding: 0.4rem 0.8rem;
+            font-size: 0.75rem;
+            font-family: 'Fira Code', monospace;
+            color: var(--text-dim);
+            border-bottom: 1px solid #1e293b;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .code-block {
+            padding: 0.8rem;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.8rem;
+            line-height: 1.5;
+            color: #f1f5f9;
+            overflow-x: auto;
+            white-space: pre;
+        }
+
+        .bug-alert-box {
+            padding: 0.85rem 1rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+
+        .bug-alert-code {
+            background: rgba(6, 182, 212, 0.1);
+            border: 1px solid var(--color-code-bug);
+            color: #a5f3fc;
+        }
+
+        .bug-alert-spec {
+            background: rgba(192, 132, 252, 0.1);
+            border: 1px solid var(--color-spec-bug);
+            color: #f3e8ff;
+        }
+
+        /* SVG Node Styling */
+        .svg-node {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .svg-node rect {
+            stroke-width: 1.5px;
+            transition: all 0.2s ease;
+        }
+
+        .svg-node:hover rect {
+            stroke-width: 2.5px;
+            filter: drop-shadow(0 0 8px currentColor);
+        }
+
+        .svg-node.selected rect {
+            stroke-width: 3px;
+            filter: drop-shadow(0 0 12px currentColor);
+        }
+
+        .svg-node text {
+            font-family: 'Inter', sans-serif;
+            pointer-events: none;
+        }
+
+        .svg-edge {
+            stroke-width: 2px;
+            fill: none;
+            transition: stroke-width 0.2s;
+            cursor: pointer;
+        }
+
+        .svg-edge:hover {
+            stroke-width: 3.5px;
+        }
+
+        .svg-edge-label {
+            font-family: 'Fira Code', monospace;
+            font-size: 10px;
+            fill: #94a3b8;
+            pointer-events: none;
+        }
+
+        /* Help bar on bottom */
+        .help-bar {
+            background: var(--bg-surface);
+            border-top: 1px solid var(--border-subtle);
+            padding: 0.4rem 1.5rem;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: space-between;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="brand-section">
+            <span class="badge-protocol">HOOH v1 Spec Engine</span>
+            <h1>Protocol Decision Graph &amp; Architecture Map</h1>
+        </div>
+
+        <div class="view-tabs">
+            <button class="tab-btn active" data-view="master">Master Integrated Flow</button>
+            <button class="tab-btn" data-view="preface">1. Preface &amp; Dial</button>
+            <button class="tab-btn" data-view="stream_state">2. State &amp; IDs</button>
+            <button class="tab-btn" data-view="framing">3. Shape &amp; Limits</button>
+            <button class="tab-btn" data-view="request_step7">4. Step 7 &amp; Path</button>
+            <button class="tab-btn" data-view="client_pipeline">5. bcurl Pipeline</button>
+            <button class="tab-btn" data-view="bugs_only">Bugs (Code vs Spec)</button>
+        </div>
+
+        <div class="header-actions">
+            <input type="text" id="nodeSearch" class="search-input" placeholder="Search node, error, or file...">
+        </div>
+    </header>
+
+    <div class="workspace">
+        <div class="canvas-container" id="canvasContainer">
+            <div class="canvas-legend">
+                <div class="legend-row"><div class="legend-indicator" style="background: var(--color-normal);"></div><span>Normal Flow / 200 OK</span></div>
+                <div class="legend-row"><div class="legend-indicator" style="background: var(--color-step);"></div><span>Protocol Step / Decision</span></div>
+                <div class="legend-row"><div class="legend-indicator" style="background: var(--color-stream-err);"></div><span>Stream Error (4xx, RST)</span></div>
+                <div class="legend-row"><div class="legend-indicator" style="background: var(--color-conn-err);"></div><span>Conn Error (GOAWAY, Close)</span></div>
+                <div class="legend-row"><div class="legend-indicator" style="background: var(--color-code-bug);"></div><span>Code Bug (Caught &amp; Fixed)</span></div>
+                <div class="legend-row"><div class="legend-indicator" style="background: var(--color-spec-bug);"></div><span>Spec Bug ("Bad Shi" / Conflict)</span></div>
+            </div>
+
+            <div class="canvas-controls">
+                <button class="ctrl-btn" id="btnZoomIn" title="Zoom In">+</button>
+                <button class="ctrl-btn" id="btnZoomOut" title="Zoom Out">&minus;</button>
+                <button class="ctrl-btn" id="btnZoomReset" title="Reset View">&#8635;</button>
+            </div>
+
+            <svg id="graphCanvas">
+                <defs>
+                    <marker id="arrow-normal" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                        <polygon points="0 1, 8 4, 0 7" fill="#10b981" />
+                    </marker>
+                    <marker id="arrow-step" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                        <polygon points="0 1, 8 4, 0 7" fill="#38bdf8" />
+                    </marker>
+                    <marker id="arrow-stream-err" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                        <polygon points="0 1, 8 4, 0 7" fill="#f97316" />
+                    </marker>
+                    <marker id="arrow-conn-err" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                        <polygon points="0 1, 8 4, 0 7" fill="#ef4444" />
+                    </marker>
+                    <marker id="arrow-code-bug" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                        <polygon points="0 1, 8 4, 0 7" fill="#06b6d4" />
+                    </marker>
+                    <marker id="arrow-spec-bug" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                        <polygon points="0 1, 8 4, 0 7" fill="#c084fc" />
+                    </marker>
+                    <marker id="arrow-default" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                        <polygon points="0 1, 8 4, 0 7" fill="#64748b" />
+                    </marker>
+                </defs>
+                <g id="viewportTransform">
+                    <g id="edgesLayer"></g>
+                    <g id="nodesLayer"></g>
+                </g>
+            </svg>
+        </div>
+
+        <!-- Right Side Details Drawer -->
+        <aside class="inspector-panel" id="inspectorPanel">
+            <div class="panel-header">
+                <div class="panel-title-group">
+                    <span class="panel-category-badge" id="panelCategory">Node Category</span>
+                    <h2 class="panel-title" id="panelTitle">Click any node to inspect</h2>
+                </div>
+                <button class="panel-close-btn" id="panelCloseBtn">&times;</button>
+            </div>
+            <div class="panel-body">
+                <div class="section-box" id="bugSection" style="display: none;">
+                    <span class="section-label">Bug Diagnostics &amp; Impact</span>
+                    <div id="bugBox" class="bug-alert-box"></div>
+                </div>
+
+                <div class="section-box">
+                    <span class="section-label">RFC Specification Clause</span>
+                    <div class="spec-quote-card" id="panelSpec">Select a node from the workflow graph.</div>
+                </div>
+
+                <div class="section-box">
+                    <span class="section-label">Technical Scenario Details</span>
+                    <div id="panelDesc" style="font-size: 0.85rem; color: var(--text-dim); line-height: 1.6;"></div>
+                </div>
+
+                <div class="section-box">
+                    <span class="section-label">Wire-Format Bytes / Hex Output</span>
+                    <div class="wire-card" id="panelWire">--</div>
+                </div>
+
+                <div class="section-box">
+                    <span class="section-label">C++17 Implementation Source</span>
+                    <div class="code-container">
+                        <div class="code-header">
+                            <span id="codeFilePath">hooh/session.cc</span>
+                            <span id="codeLineSpan">Line --</span>
+                        </div>
+                        <div class="code-block" id="codeContent">// Source code here</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <footer class="help-bar">
+        <span>Click any node or edge to inspect exact Spec text, Wire Bytes, and C++ source code.</span>
+        <span>Drag canvas to pan &bull; Scroll to zoom &bull; Use View Tabs above to switch sub-workflows</span>
+    </footer>
+
+    <!-- Interactive Graph Data & Rendering Engine -->
+    <script>
+        const GRAPH_DATA = {
+            nodes: [
+                // STAGE 1: Socket & Preface
+                { id: "tcp_start", title: "TCP Socket Connect / Accept", sub: "3-Way Handshake", type: "step", spec: "§2 Conventions: Client dials TCP, server accepts persistent socket.", file: "apps/bserve_main.cc:290", lines: "L290-L298", code: "socket_t client_sock = accept(listen_sock, ...);\nstd::thread([client_sock, root]() {\n    handle_client(client_sock, root);\n}).detach();", wire: "TCP SYN -> SYN/ACK -> ACK", desc: "Server listens on assigned port with SO_REUSEADDR. Thread-per-connection accepts incoming persistent connection.", views: ["master", "preface"] },
+                { id: "timer_init", title: "Inactivity Clock T0 Initialized", sub: "Counted from accept", type: "step", spec: "§12 Lifecycle: Counted from accept over all bytes.", file: "hooh/session.cc:11", lines: "L11-L14", code: "last_traffic_time_ = std::chrono::steady_clock::now();", wire: "No bytes exchanged yet", desc: "Inactivity clock starts immediately upon connection accept. Traffic in either direction resets it.", views: ["master", "preface"] },
+                { id: "client_pref_send", title: "Client Sends HeLlOOlLeH", sub: "10-Byte Preface", type: "normal", spec: "§3: Client MUST send as first bytes: HeLlOOlLeH = 48 65 4c 6c 4f 4f 6c 4c 65 48.", file: "hooh/session.cc:114", lines: "L114-L121", code: "int n = send(sock_, (const char*)kPreface, kPrefaceSize, 0);\nwire_offset_sent_ += kPrefaceSize;\nrecord_traffic();", wire: "48 65 4c 6c 4f 4f 6c 4c 65 48 (10 B)", desc: "Client emits 10 magic bytes before any frame headers or negotiation.", views: ["master", "preface"] },
+                { id: "srv_pref_check", title: "Server Compares Preface", sub: "Byte-by-Byte Match", type: "step", spec: "§3: Server MUST compare bytes exactly; peer MAY close at first byte that differs.", file: "hooh/session.cc:137", lines: "L137-L153", code: "int n = recv(sock_, (char*)&client_preface[i], 1, 0);\nif (client_preface[i] != kPreface[i]) {\n    return false; // Close immediately without transmitting!\n}", wire: "Client -> Server: 10 Bytes", desc: "Server verifies client preface. On match, echoes 10 bytes back. On mismatch, closes immediately.", views: ["master", "preface"] },
+                { id: "pref_mismatch", title: "First Byte Mismatch", sub: "Immediate Close", type: "conn-err", spec: "§3: On mismatch it MUST close immediately without transmitting anything.", file: "apps/bserve_main.cc:20", lines: "L20-L24", code: "if (!session.do_preface_exchange()) {\n    close_socket(client_sock);\n    return;\n}", wire: "0 Bytes returned by server", desc: "Wrong protocol dialed. Server drops socket with 0 bytes sent, protecting against alien protocols.", views: ["master", "preface"] },
+                { id: "code_bug_3", title: "[CODE BUG #3] Windows TCP RST 10054", sub: "Harness Close Handling", type: "code-bug", bugType: "code", spec: "§3: Immediate silent socket close without response frame.", file: "tests/conformance.py:202", lines: "L202-L210", code: "try:\n    resp = s.recv(10)\n    assert len(resp) == 0\nexcept (ConnectionResetError, ConnectionAbortedError):\n    pass # Expected on Windows TCP stack!", wire: "TCP RST Packet issued by OS", desc: "When server closes socket while client still has unread preface bytes in flight, Windows issues WSAECONNRESET (10054). Fixed in test harness.", views: ["master", "preface", "bugs_only"] },
+                { id: "spec_bug_1", title: "[SPEC BUG #1] Idle vs Preface Contradiction", sub: "Silent Close vs GOAWAY", type: "spec-bug", bugType: "spec", spec: "§3 vs §12: §3 commands silent close with NO GOAWAY before greeting; §12 commands GOAWAY(NO_ERROR) for 60s silence from accept.", file: "hooh/session.h", lines: "Spec Conflict", code: "// §3 says: 'no GOAWAY is sent before the greeting is done.'\n// §12 says: 'no bytes for 60s from accept; then GOAWAY(NO_ERROR)+close.'", wire: "Undefined: GOAWAY or Zero Bytes?", desc: "Direct normative contradiction in the specification: Implementations cannot satisfy both clauses when a client connects and sends nothing.", views: ["master", "preface", "bugs_only"] },
+                { id: "srv_echo", title: "Server Echoes HeLlOOlLeH", sub: "Handshake Complete", type: "normal", spec: "§3: On match it MUST send the same ten bytes back at once.", file: "hooh/session.cc:159", lines: "L159-L164", code: "send(sock_, (const char*)kPreface, kPrefaceSize, 0);\nwire_offset_sent_ += kPrefaceSize;", wire: "48 65 4c 6c 4f 4f 6c 4c 65 48 (10 B)", desc: "Server confirms HOOH protocol. Client validates echo and enters frame loop.", views: ["master", "preface"] },
+
+                // STAGE 2: Frame Loop & State Machine
+                { id: "frame_loop", title: "Active Frame Processing Loop", sub: "Persistent Connection", type: "step", spec: "§4: Frame Layout. Length 24b, Type 4b, Flags 4b, StreamID 24b.", file: "apps/bserve_main.cc:33", lines: "L33-L45", code: "while (true) {\n    session.read_and_classify_frame(&hdr, &payload, &action, timeout_ms);\n}", wire: "7-Byte Fixed Frame Headers", desc: "Persistent connection loop: processes frames sequentially according to strict §11 ordering.", views: ["master", "stream_state"] },
+                { id: "idle_reap", title: "60s Idle Timeout Reaped", sub: "GOAWAY(NO_ERROR)", type: "conn-err", spec: "§12: Inactivity for 60s -> GOAWAY(last_stream_id, NO_ERROR) + 2s drain + close.", file: "apps/bserve_main.cc:35", lines: "L35-L39", code: "if (idle_secs >= 60) {\n    session.send_goaway(session.last_committed_stream(), ERR_NO_ERROR);\n    drain_and_close();\n    return;\n}", wire: "GOAWAY len=4 stream=0 [last_id: 3B][err=0: 1B]", desc: "Server gracefully shuts down idle connection, committing only up to last fully answered stream ID.", views: ["master", "stream_state"] },
+                { id: "step2_skip", title: "Step 2: Unknown Type Skip", sub: "Types 0x6 .. 0xF", type: "normal", spec: "§4 & §13: Unknown types skipped cleanly by Length bytes. Never allocates payload.", file: "hooh/session.cc:245", lines: "L245-L248", code: "if (hdr.type >= 0x6) {\n    return {FrameActionType::Skip, 0, \"Unknown frame type\"};\n}", wire: "Payload skipped in bounded 4KB chunks", desc: "HOOH additive forward compatibility: future frame types pass through v1 receivers without disconnecting.", views: ["master", "framing"] },
+                { id: "step3_stream0", title: "Step 3: Stream 0 Ownership Check", sub: "Stream ID == 0", type: "step", spec: "§7 & §11 Step 3: Stream 0 denotes connection itself.", file: "hooh/session.cc:250", lines: "L250-L260", code: "if (hdr.type == TYPE_HEADERS || hdr.type == TYPE_DATA || hdr.type == TYPE_RST_STREAM) {\n    if (hdr.stream_id == 0) return {ConnError, PROTOCOL_ERROR};\n}", wire: "Stream ID = 00 00 00", desc: "Stream 0 is reserved exclusively for PING, PONG, and GOAWAY.", views: ["master", "stream_state"] },
+                { id: "step3_even", title: "Non-Zero Even ID Rejected", sub: "Even ID Parity", type: "conn-err", spec: "§7: Non-zero even ID -> connection error.", file: "hooh/session.cc:262", lines: "L262-L264", code: "if (hdr.stream_id != 0 && (hdr.stream_id % 2 == 0)) {\n    return {FrameActionType::ConnectionError, ERR_PROTOCOL_ERROR};\n}", wire: "Stream ID % 2 == 0", desc: "Even IDs reserved for v2 server-initiated streams. Connection terminated immediately.", views: ["master", "stream_state"] },
+                { id: "srv_stream_reuse", title: "Stream ID Reuse Rejected", sub: "Gap or Closed Stream", type: "conn-err", spec: "§7 & §11 Step 3: HEADERS on gap or closed ID is connection error.", file: "hooh/session.cc:284", lines: "L284-L286", code: "if (is_gap || is_closed) {\n    return {FrameActionType::ConnectionError, ERR_PROTOCOL_ERROR};\n}", wire: "HEADERS on ID <= highest_used", desc: "Monotonic strictly increasing stream ID rule violated. Closes connection with GOAWAY(PROTOCOL_ERROR).", views: ["master", "stream_state"] },
+                { id: "concurrency_limit", title: "1-Stream Concurrency Exceeded", sub: "400 on New Stream", type: "stream-err", spec: "§7: v1 permits at most 1 open request stream; HEADERS opening while open yields 400.", file: "hooh/session.cc:289", lines: "L289-L293", code: "if (open_stream_id_ != 0) {\n    return {FrameActionType::StreamError, 400, \"One-stream limit exceeded\"};\n}", wire: "HEADERS len=6 stream=3 flags=ES|EH [:status=400]", desc: "Server rejects second stream with 400. New stream closes immediately; active stream remains unharmed.", views: ["master", "stream_state"] },
+                { id: "code_bug_1", title: "[CODE BUG #1] close_stream State Wipeout", sub: "Active Stream Corrupted", type: "code-bug", bugType: "code", spec: "§7: Rejecting concurrent stream must not impact active stream state.", file: "hooh/session.cc:213", lines: "L213-L218", code: "void Session::close_stream(uint32_t id) {\n    if (open_stream_id_ == id) {\n        open_stream_id_ = 0;\n        current_stream_state_ = StreamState{};\n    }\n    mark_id_used(id);\n}", wire: "Internal state fix", desc: "close_stream() was wiping current_stream_state_ unconditionally, breaking active stream 1. Fixed by scoping wipe to matching open_stream_id.", views: ["master", "stream_state", "bugs_only"] },
+                { id: "code_bug_2", title: "[CODE BUG #2] Client Stream Sync Desync", sub: "Unsolicited Response False-Positive", type: "code-bug", bugType: "code", spec: "§11 Step 3: Client HEADERS reception on stream it opened.", file: "hooh/session.cc:94", lines: "L94-L100", code: "void Session::open_client_stream(uint32_t id) {\n    open_stream_id_ = id;\n    current_stream_state_.headers_seen_out = true;\n    mark_id_used(id);\n}", wire: "Client state machine sync", desc: "Client failed to record open_stream_id upon sending request HEADERS, rejecting server 200 response as unsolicited. Fixed.", views: ["master", "stream_state", "bugs_only"] },
+
+                // STAGE 3: Framing & Limits
+                { id: "step4_size_413", title: "Step 4: Oversize Request (413)", sub: "Length > impl_limit", type: "stream-err", spec: "§4 & §11 Step 4: Length > impl_limit on request stream -> discard Length + 413.", file: "hooh/session.cc:320", lines: "L320-L325", code: "if (hdr.length > impl_limit_) {\n    return {FrameActionType::StreamError, 413, \"Frame exceeds impl limit\"};\n}", wire: "HEADERS len=6 stream=s flags=ES|EH [:status=413]", desc: "Payload skipped without buffer overflow. Stream error 413 returned; connection stays open.", views: ["master", "framing"] },
+                { id: "step5_shape_err", title: "Step 5: Shape & Flags Violation (400)", sub: "Malformed Frame Shape", type: "stream-err", spec: "§6 Table & §11 Step 5: DATA len=0, END_HEADERS=0 on HEADERS, END_HEADERS=1 on DATA.", file: "hooh/session.cc:327", lines: "L327-L345", code: "if (hdr.type == TYPE_DATA && hdr.length == 0) shape_err = true;\nif (hdr.type == TYPE_HEADERS && !(hdr.flags & FLAG_END_HEADERS)) shape_err = true;", wire: "HEADERS len=6 stream=s flags=ES|EH [:status=400]", desc: "Frame shape violations on request stream trigger 400 Bad Request.", views: ["master", "framing"] },
+
+                // STAGE 4: Control Frames
+                { id: "ctrl_rst_abort", title: "RST_STREAM Abort", sub: "Stream Aborted", type: "normal", spec: "§8.3: Sent only on open stream; aborts without closing connection. Receives no response.", file: "hooh/session.cc:107", lines: "L107-L113", code: "void Session::abort_stream(uint32_t id) {\n    current_stream_state_.aborted = true;\n    close_stream(id);\n}", wire: "RST_STREAM len=1 stream=s [error: 1B]", desc: "Stream terminated cleanly. Buffered data discarded. Connection ready for next stream.", views: ["master", "framing"] },
+                { id: "ctrl_ping_echo", title: "PING / PONG Challenge Echo", sub: "8-Byte Challenge", type: "normal", spec: "§8.4 & §8.5: Valid PING answered with PONG echoing challenge verbatim on stream 0.", file: "apps/bserve_main.cc:80", lines: "L80-L87", code: "pong_hdr.type = TYPE_PONG;\npong_hdr.length = 8;\nsession.send_frame(pong_hdr, payload.data(), 8);", wire: "PONG len=8 stream=0 [challenge: 8B]", desc: "Liveness probe answered immediately.", views: ["master", "framing"] },
+                { id: "spec_bug_6", title: "[SPEC BUG #6] Liveness Probe Deadlock", sub: "Probe Resets Idle Clock", type: "spec-bug", bugType: "spec", spec: "§8.4 vs §12: PING counts as outgoing traffic, resetting idle clock against dead peers.", file: "hooh/session.cc:88", lines: "Spec Conflict", code: "// §12: 'Traffic in either direction resets the clock'\n// Sender pinging a zombie peer resets its own idle clock!", wire: "Deadlock on probe traffic", desc: "A client sending periodic PINGs to a hung peer continually resets the idle timer, preventing timeout reap.", views: ["master", "framing", "bugs_only"] },
+
+                // STAGE 5: Step 7 Request & Path Evaluation
+                { id: "step7_eval", title: "Step 7: Request Payload Evaluation", sub: "Triggered on END_STREAM", type: "step", spec: "§8.2 & §11 Step 7: Evaluated once request END_STREAM is seen. Only step that waits for it.", file: "apps/bserve_main.cc:127", lines: "L127-L135", code: "if (cur->end_stream_in) {\n    auto dec = decode_header_block(cur->headers_payload.data(), ...);\n}", wire: "All request DATA frames received", desc: "Grammar, content-length, method, path, and containment evaluated in strict order.", views: ["master", "request_step7"] },
+                { id: "eval_cl_mismatch", title: "content-length Mismatch (400)", sub: "Declared != Actual DATA", type: "stream-err", spec: "§9: content-length MUST equal total DATA payload bytes; mismatch yields 400.", file: "apps/bserve_main.cc:147", lines: "L147-L153", code: "if (req.has_content_length && req.content_length != cur->body_bytes_seen) {\n    send_error_response(sender, sid, 400);\n}", wire: "HEADERS len=6 stream=s flags=ES|EH [:status=400]", desc: "Stream-level error: content-length value grammar violation.", views: ["master", "request_step7"] },
+                { id: "eval_method_405", title: "Disallowed Method (405)", sub: "Known Disallowed", type: "stream-err", spec: "§10: HEAD, POST, PUT, DELETE, CONNECT, OPTIONS, PATCH, TRACE yield 405.", file: "apps/bserve_main.cc:160", lines: "L160-L168", code: "if (req.method == \"POST\" || ...) {\n    send_error_response(sender, sid, 405);\n}", wire: "HEADERS len=6 stream=s flags=ES|EH [:status=405]", desc: "HTTP method recognized but not allowed in v1.", views: ["master", "request_step7"] },
+                { id: "eval_method_501", title: "Unknown Method Token (501)", sub: "Not Implemented", type: "stream-err", spec: "§10: Any other method token yields 501.", file: "apps/bserve_main.cc:170", lines: "L170-L175", code: "send_error_response(sender, sid, 501);", wire: "HEADERS len=6 stream=s flags=ES|EH [:status=501]", desc: "Unrecognized custom method token.", views: ["master", "request_step7"] },
+                { id: "eval_path_grammar", title: "Path Grammar Error (400)", sub: "Leading / and NUL Check", type: "stream-err", spec: "§10 (a)-(c): Strip ?, reject NUL (0x00), require leading /.", file: "hooh/pathutil.cc:12", lines: "L12-L28", code: "if (s.find('\\0') != string::npos || s.empty() || s[0] != '/') return Invalid;", wire: "HEADERS len=6 stream=s flags=ES|EH [:status=400]", desc: "Malformed path syntax.", views: ["master", "request_step7"] },
+                { id: "spec_bug_4", title: "[SPEC BUG #4] Trailing Slash Flattening", sub: "/index.html/ -> /index.html", type: "spec-bug", bugType: "spec", spec: "§10 (d): Trailing slash stripped lexically; collapses file path to directory.", file: "hooh/pathutil.cc:35", lines: "L35-L65", code: "// Spec: '/index.html/' becomes '/index.html'\n// Normal web servers return 404 because file is not a folder!", wire: "Path normalized without slash", desc: "Lexical trailing slash removal serves regular files requested with trailing slashes, erasing directory intent.", views: ["master", "request_step7", "bugs_only"] },
+                { id: "eval_path_404", title: "Existence Hiding (404 Not Found)", sub: "Anonymous 404", type: "stream-err", spec: "§10 (f)-(g): Missing, escaped, dotfile, special, unreadable all yield identical 404.", file: "hooh/pathutil.cc:75", lines: "L75-L120", code: "if (!contained || is_dot || !is_regular) {\n    return PathResolveResult::NotFound;\n}", wire: "HEADERS len=6 stream=s flags=ES|EH [:status=404]", desc: "Existence-hiding policy: Wire never distinguishes true failure reason. True reason logged to stderr.", views: ["master", "request_step7"] },
+                { id: "spec_bug_2", title: "[SPEC BUG #2] Status 500 Forbidden Trap", sub: "Internal Error Masked as 404", type: "spec-bug", bugType: "spec", spec: "§10: Status 500 reserved but NOT produced in v1. Read failure before response hidden as 404.", file: "hooh/pathutil.cc:125", lines: "Spec Clause", code: "// §10: 'Status 500 is reserved but not produced in v1'\n// Read errors masked as 404 -> Client exit severity 2 is impossible!", wire: "404 masquerading internal error", desc: "Server internal disk failures are forced to masquerade as client 404s. Client exit code 2 (5xx) cannot occur.", views: ["master", "request_step7", "bugs_only"] },
+                { id: "eval_success_200", title: "Serve File (200 OK)", sub: "Headers + Chunked DATA", type: "normal", spec: "§8.1 & §10: Status 200, Content-Type, chunked DATA <= 16 KiB with END_STREAM on last.", file: "hooh/fileserve.cc:45", lines: "L45-L85", code: "send_frame(headers_200, ...);\nwhile (remaining > 0) {\n    send_frame(data_chunk, ...);\n}", wire: "HEADERS len=18 stream=s | DATA len=... flags=ES", desc: "File content streamed to client. Stream complete.", views: ["master", "request_step7"] },
+
+                // STAGE 6: bcurl Client Pipeline
+                { id: "bcurl_start", title: "bcurl Invocation & URL Validation", sub: "Single Connection", type: "step", spec: "Appendix A: All URLs must share host and port, else usage error 4.", file: "apps/bcurl_main.cc:45", lines: "L45-L65", code: "if (urls[i].host != target_host || urls[i].port != target_port) {\n    return 4; // Usage Error\n}", wire: "CLI URL validation", desc: "Client validates that all target URLs reside on same host:port.", views: ["master", "client_pipeline"] },
+                { id: "spec_bug_5", title: "[SPEC BUG #5] Reconnect Conflict on 0xFFFFFF", sub: "§7 vs Appendix A", type: "spec-bug", bugType: "spec", spec: "§7 allows opening new connection on 0xFFFFFF; Appendix A forbids second connection.", file: "apps/bcurl_main.cc:157", lines: "L157-L162", code: "if (next_stream_id > kMaxStreamId) {\n    worst_severity = std::max(worst_severity, 3);\n    break; // bcurl never opens second connection!\n}", wire: "Stream ID Exhaustion", desc: "§7 allows opening a new connection after 0xFFFFFF, but reference bcurl spec strictly forbids reconnecting.", views: ["master", "client_pipeline", "bugs_only"] },
+                { id: "bcurl_exit_calc", title: "bcurl Exit Severity Calculation", sub: "Severity Hierarchy", type: "normal", spec: "Appendix A: Exit codes: 4 (usage) > 3 (transport/framing) > 2 (5xx) > 1 (4xx) > 0 (2xx).", file: "apps/bcurl_main.cc:320", lines: "L320-L325", code: "return worst_severity;", wire: "Process Exit Code: 0, 1, 2, 3, or 4", desc: "Client returns worst severity seen across all sequential requests.", views: ["master", "client_pipeline"] }
+            ],
+
+            edges: [
+                { from: "tcp_start", to: "timer_init", label: "T0 = now", type: "step" },
+                { from: "timer_init", to: "client_pref_send", label: "Initiate Dial", type: "step" },
+                { from: "client_pref_send", to: "srv_pref_check", label: "10 Bytes", type: "step" },
+                { from: "srv_pref_check", to: "pref_mismatch", label: "Mismatch Byte", type: "conn-err" },
+                { from: "pref_mismatch", to: "code_bug_3", label: "TCP RST 10054", type: "code-bug" },
+                { from: "srv_pref_check", to: "spec_bug_1", label: "60s Stalled", type: "spec-bug" },
+                { from: "srv_pref_check", to: "srv_echo", label: "Match", type: "normal" },
+                { from: "srv_echo", to: "frame_loop", label: "Handshake OK", type: "normal" },
+                { from: "frame_loop", to: "idle_reap", label: "Inactivity >= 60s", type: "conn-err" },
+                { from: "frame_loop", to: "step2_skip", label: "Type 0x6..0xF", type: "step" },
+                { from: "step2_skip", to: "frame_loop", label: "Skip & Resume", type: "normal" },
+                { from: "frame_loop", to: "step3_stream0", label: "Known Type", type: "step" },
+                { from: "step3_stream0", to: "step3_even", label: "Stream > 0", type: "step" },
+                { from: "step3_even", to: "srv_stream_reuse", label: "Odd Stream ID", type: "step" },
+                { from: "srv_stream_reuse", to: "concurrency_limit", label: "New Stream ID", type: "step" },
+                { from: "concurrency_limit", to: "code_bug_1", label: "State Isolation", type: "code-bug" },
+                { from: "concurrency_limit", to: "step4_size_413", label: "Stream Open", type: "step" },
+                { from: "step4_size_413", to: "step5_shape_err", label: "Length <= Limit", type: "step" },
+                { from: "step5_shape_err", to: "ctrl_rst_abort", label: "RST_STREAM", type: "step" },
+                { from: "step5_shape_err", to: "ctrl_ping_echo", label: "PING", type: "step" },
+                { from: "ctrl_ping_echo", to: "spec_bug_6", label: "Probe Traffic", type: "spec-bug" },
+                { from: "step5_shape_err", to: "step7_eval", label: "HEADERS / DATA", type: "step" },
+                { from: "step7_eval", to: "eval_cl_mismatch", label: "CL Mismatch", type: "stream-err" },
+                { from: "step7_eval", to: "eval_method_405", label: "POST/PUT/etc", type: "stream-err" },
+                { from: "step7_eval", to: "eval_method_501", label: "Custom Token", type: "stream-err" },
+                { from: "step7_eval", to: "eval_path_grammar", label: "Grammar Error", type: "stream-err" },
+                { from: "eval_path_grammar", to: "spec_bug_4", label: "Strip /", type: "spec-bug" },
+                { from: "spec_bug_4", to: "eval_path_404", label: "Dot / Escape", type: "stream-err" },
+                { from: "eval_path_404", to: "spec_bug_2", label: "Read Error", type: "spec-bug" },
+                { from: "eval_path_404", to: "eval_success_200", label: "Valid File", type: "normal" },
+                { from: "eval_success_200", to: "bcurl_loop", label: "Stream Done", type: "normal" },
+                { from: "bcurl_loop", to: "spec_bug_5", label: "> 0xFFFFFF", type: "spec-bug" },
+                { from: "bcurl_loop", to: "bcurl_exit_calc", label: "Exit Hierarchy", type: "normal" }
+            ]
+        };
+
+        // Layout & Graph Engine
+        const svg = document.getElementById('graphCanvas');
+        const viewport = document.getElementById('viewportTransform');
+        const nodesLayer = document.getElementById('nodesLayer');
+        const edgesLayer = document.getElementById('edgesLayer');
+        const container = document.getElementById('canvasContainer');
+
+        let zoom = 1.0;
+        let panX = 40;
+        let panY = 40;
+        let isDragging = false;
+        let startX = 0;
+        let startY = 0;
+        let activeView = "master";
+        let selectedNodeId = null;
+
+        // Node Dimensions
+        const NODE_WIDTH = 260;
+        const NODE_HEIGHT = 70;
+
+        function computeLayout(view) {
+            const filteredNodes = GRAPH_DATA.nodes.filter(n => n.views.includes(view));
+            const nodeMap = new Map();
+
+            // Grid placement
+            let col = 0;
+            let row = 0;
+            const COLS = Math.max(3, Math.ceil(Math.sqrt(filteredNodes.length * 1.5)));
+
+            filteredNodes.forEach((node, i) => {
+                const x = 50 + col * (NODE_WIDTH + 80);
+                const y = 80 + row * (NODE_HEIGHT + 70);
+                nodeMap.set(node.id, { ...node, x, y });
+
+                col++;
+                if (col >= COLS) {
+                    col = 0;
+                    row++;
+                }
+            });
+
+            return { nodes: Array.from(nodeMap.values()), nodeMap };
+        }
+
+        function renderGraph(view) {
+            nodesLayer.innerHTML = '';
+            edgesLayer.innerHTML = '';
+
+            const { nodes, nodeMap } = computeLayout(view);
+
+            // Render Edges
+            GRAPH_DATA.edges.forEach(edge => {
+                const src = nodeMap.get(edge.from);
+                const dst = nodeMap.get(edge.to);
+                if (!src || !dst) return;
+
+                const x1 = src.x + NODE_WIDTH;
+                const y1 = src.y + NODE_HEIGHT / 2;
+                const x2 = dst.x;
+                const y2 = dst.y + NODE_HEIGHT / 2;
+
+                const dx = Math.abs(x2 - x1) * 0.5;
+                const pathD = `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
+
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', pathD);
+                path.setAttribute('class', 'svg-edge');
+                
+                let strokeColor = '#475569';
+                let marker = 'arrow-default';
+                if (edge.type === 'normal') { strokeColor = '#10b981'; marker = 'arrow-normal'; }
+                if (edge.type === 'step') { strokeColor = '#38bdf8'; marker = 'arrow-step'; }
+                if (edge.type === 'stream-err') { strokeColor = '#f97316'; marker = 'arrow-stream-err'; }
+                if (edge.type === 'conn-err') { strokeColor = '#ef4444'; marker = 'arrow-conn-err'; }
+                if (edge.type === 'code-bug') { strokeColor = '#06b6d4'; marker = 'arrow-code-bug'; }
+                if (edge.type === 'spec-bug') { strokeColor = '#c084fc'; marker = 'arrow-spec-bug'; }
+
+                path.setAttribute('stroke', strokeColor);
+                path.setAttribute('marker-end', `url(#${marker})`);
+
+                path.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    inspectEdge(edge, src, dst);
+                });
+
+                edgesLayer.appendChild(path);
+
+                // Edge label
+                if (edge.label) {
+                    const midX = (x1 + x2) / 2;
+                    const midY = (y1 + y2) / 2 - 8;
+                    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    text.setAttribute('x', midX);
+                    text.setAttribute('y', midY);
+                    text.setAttribute('class', 'svg-edge-label');
+                    text.setAttribute('text-anchor', 'middle');
+                    text.textContent = edge.label;
+                    edgesLayer.appendChild(text);
+                }
+            });
+
+            // Render Nodes
+            nodes.forEach(node => {
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                g.setAttribute('class', `svg-node ${selectedNodeId === node.id ? 'selected' : ''}`);
+                g.setAttribute('transform', `translate(${node.x}, ${node.y})`);
+                g.setAttribute('data-id', node.id);
+
+                let strokeColor = '#3b82f6';
+                let fillCard = '#162033';
+                if (node.type === 'normal') { strokeColor = '#10b981'; fillCard = '#0f291e'; }
+                if (node.type === 'step') { strokeColor = '#38bdf8'; fillCard = '#112238'; }
+                if (node.type === 'stream-err') { strokeColor = '#f97316'; fillCard = '#2d1808'; }
+                if (node.type === 'conn-err') { strokeColor = '#ef4444'; fillCard = '#2d1010'; }
+                if (node.type === 'code-bug') { strokeColor = '#06b6d4'; fillCard = '#0c2833'; }
+                if (node.type === 'spec-bug') { strokeColor = '#c084fc'; fillCard = '#251438'; }
+
+                const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                rect.setAttribute('width', NODE_WIDTH);
+                rect.setAttribute('height', NODE_HEIGHT);
+                rect.setAttribute('rx', '8');
+                rect.setAttribute('fill', fillCard);
+                rect.setAttribute('stroke', strokeColor);
+
+                const title = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                title.setAttribute('x', 14);
+                title.setAttribute('y', 26);
+                title.setAttribute('fill', '#ffffff');
+                title.setAttribute('font-size', '13px');
+                title.setAttribute('font-weight', '600');
+                title.textContent = node.title;
+
+                const sub = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                sub.setAttribute('x', 14);
+                sub.setAttribute('y', 48);
+                sub.setAttribute('fill', '#94a3b8');
+                sub.setAttribute('font-size', '11px');
+                sub.textContent = `${node.sub} (${node.file.split(':')[0]})`;
+
+                g.appendChild(rect);
+                g.appendChild(title);
+                g.appendChild(sub);
+
+                g.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectNode(node);
+                });
+
+                nodesLayer.appendChild(g);
+            });
+
+            updateTransform();
+        }
+
+        function updateTransform() {
+            viewport.setAttribute('transform', `translate(${panX}, ${panY}) scale(${zoom})`);
+        }
+
+        function selectNode(node) {
+            selectedNodeId = node.id;
+            document.querySelectorAll('.svg-node').forEach(el => {
+                if (el.getAttribute('data-id') === node.id) {
+                    el.classList.add('selected');
+                } else {
+                    el.classList.remove('selected');
+                }
+            });
+
+            const panel = document.getElementById('inspectorPanel');
+            panel.classList.remove('collapsed');
+
+            const badge = document.getElementById('panelCategory');
+            badge.textContent = node.type.replace('_', ' ').toUpperCase();
+            if (node.type === 'normal') { badge.style.background = 'rgba(16, 185, 129, 0.2)'; badge.style.color = '#10b981'; }
+            else if (node.type === 'step') { badge.style.background = 'rgba(56, 189, 248, 0.2)'; badge.style.color = '#38bdf8'; }
+            else if (node.type === 'stream-err') { badge.style.background = 'rgba(249, 115, 22, 0.2)'; badge.style.color = '#f97316'; }
+            else if (node.type === 'conn-err') { badge.style.background = 'rgba(239, 68, 68, 0.2)'; badge.style.color = '#ef4444'; }
+            else if (node.type === 'code-bug') { badge.style.background = 'rgba(6, 182, 212, 0.2)'; badge.style.color = '#06b6d4'; }
+            else if (node.type === 'spec-bug') { badge.style.background = 'rgba(192, 132, 252, 0.2)'; badge.style.color = '#c084fc'; }
+
+            document.getElementById('panelTitle').textContent = node.title;
+            document.getElementById('panelSpec').textContent = node.spec;
+            document.getElementById('panelDesc').textContent = node.desc;
+            document.getElementById('panelWire').textContent = node.wire;
+            document.getElementById('codeFilePath').textContent = node.file;
+            document.getElementById('codeLineSpan').textContent = node.lines;
+            document.getElementById('codeContent').textContent = node.code;
+
+            const bugSection = document.getElementById('bugSection');
+            const bugBox = document.getElementById('bugBox');
+            if (node.bugType) {
+                bugSection.style.display = 'flex';
+                if (node.bugType === 'code') {
+                    bugBox.className = 'bug-alert-box bug-alert-code';
+                    bugBox.innerHTML = `<strong>CODE BUG (Resolved):</strong> This was a software implementation flaw detected by conformance test suites and fixed in the code repository.`;
+                } else {
+                    bugBox.className = 'bug-alert-box bug-alert-spec';
+                    bugBox.innerHTML = `<strong>SPEC BUG ("Bad Shi"):</strong> Inherent flaw or contradiction in the HOOH v1 RFC specification document itself. Unmodified pending user authorization.`;
+                }
+            } else {
+                bugSection.style.display = 'none';
+            }
+        }
+
+        function inspectEdge(edge, src, dst) {
+            const panel = document.getElementById('inspectorPanel');
+            panel.classList.remove('collapsed');
+
+            const badge = document.getElementById('panelCategory');
+            badge.textContent = 'DIRECTED WORKFLOW EDGE';
+            badge.style.background = 'rgba(148, 163, 184, 0.2)';
+            badge.style.color = '#94a3b8';
+
+            document.getElementById('panelTitle').textContent = `Transition: ${src.title} -> ${dst.title}`;
+            document.getElementById('panelSpec').textContent = `Condition: ${edge.label || 'Unconditional continuation'}`;
+            document.getElementById('panelDesc').textContent = `Execution advances from [${src.title}] directly into [${dst.title}] when condition '${edge.label}' is satisfied.`;
+            document.getElementById('panelWire').textContent = `Source Node: ${src.id}\nTarget Node: ${dst.id}`;
+            document.getElementById('codeFilePath').textContent = `${src.file} -> ${dst.file}`;
+            document.getElementById('codeLineSpan').textContent = 'Workflow Transition';
+            document.getElementById('codeContent').textContent = `// Evaluates condition: ${edge.label}\nif (${edge.label.toLowerCase()}) {\n    proceed_to_${dst.id}();\n}`;
+            document.getElementById('bugSection').style.display = 'none';
+        }
+
+        // Pan & Zoom Event Handlers
+        container.addEventListener('mousedown', (e) => {
+            if (e.target.closest('.svg-node') || e.target.closest('.canvas-controls') || e.target.closest('.canvas-legend')) return;
+            isDragging = true;
+            startX = e.clientX - panX;
+            startY = e.clientY - panY;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            panX = e.clientX - startX;
+            panY = e.clientY - startY;
+            updateTransform();
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        container.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const factor = e.deltaY < 0 ? 1.1 : 0.9;
+            zoom = Math.min(Math.max(0.3, zoom * factor), 3.0);
+            updateTransform();
+        }, { passive: false });
+
+        document.getElementById('btnZoomIn').addEventListener('click', () => {
+            zoom = Math.min(3.0, zoom * 1.2);
+            updateTransform();
+        });
+
+        document.getElementById('btnZoomOut').addEventListener('click', () => {
+            zoom = Math.max(0.3, zoom / 1.2);
+            updateTransform();
+        });
+
+        document.getElementById('btnZoomReset').addEventListener('click', () => {
+            zoom = 0.9;
+            panX = 30;
+            panY = 30;
+            updateTransform();
+        });
+
+        document.getElementById('panelCloseBtn').addEventListener('click', () => {
+            document.getElementById('inspectorPanel').classList.add('collapsed');
+        });
+
+        // Tab Switching
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                activeView = btn.getAttribute('data-view');
+                renderGraph(activeView);
+            });
+        });
+
+        // Search Highlighting
+        document.getElementById('nodeSearch').addEventListener('input', (e) => {
+            const q = e.target.value.toLowerCase().trim();
+            if (!q) {
+                document.querySelectorAll('.svg-node').forEach(n => n.style.opacity = '1');
+                return;
+            }
+
+            document.querySelectorAll('.svg-node').forEach(el => {
+                const id = el.getAttribute('data-id');
+                const node = GRAPH_DATA.nodes.find(n => n.id === id);
+                if (node && (node.title.toLowerCase().includes(q) || node.desc.toLowerCase().includes(q) || node.file.toLowerCase().includes(q))) {
+                    el.style.opacity = '1';
+                    el.classList.add('selected');
+                } else {
+                    el.style.opacity = '0.2';
+                    el.classList.remove('selected');
+                }
+            });
+        });
+
+        // Initial Load
+        renderGraph('master');
+        // Default select first node
+        selectNode(GRAPH_DATA.nodes[0]);
+    </script>
+</body>
+</html>
