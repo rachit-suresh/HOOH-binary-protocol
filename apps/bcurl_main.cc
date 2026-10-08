@@ -170,6 +170,12 @@ int main(int argc, char* argv[]) {
         req_block.method = "GET";
         req_block.path = urls[url_idx].path;
 
+        // Regular request headers (§9 Table 1)
+        std::string host_val = urls[url_idx].host + ":" + std::to_string(urls[url_idx].port);
+        req_block.set_header("host", host_val);
+        req_block.set_header("user-agent", "hooh-bcurl/1.0");
+        req_block.set_header("accept", "*/*");
+
         std::vector<uint8_t> req_payload = encode_header_block(req_block, Direction::Request);
 
         FrameHeader req_hdr;

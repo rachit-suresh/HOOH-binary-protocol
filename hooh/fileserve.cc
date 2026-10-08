@@ -2,8 +2,27 @@
 #include <fstream>
 #include <vector>
 #include <iostream>
+#include <ctime>
+#include <cstdlib>
 
 namespace hooh {
+
+static std::string get_rfc1123_date() {
+    const char* env_date = std::getenv("HOOH_DATE");
+    if (env_date && env_date[0] != '\0') {
+        return std::string(env_date);
+    }
+    std::time_t now = std::time(nullptr);
+    std::tm tm_buf;
+#if defined(_WIN32)
+    gmtime_s(&tm_buf, &now);
+#else
+    gmtime_r(&now, &tm_buf);
+#endif
+    char buf[64];
+    std::strftime(buf, sizeof(buf), "%a, %d %b %Y %H:%M:%S GMT", &tm_buf);
+    return std::string(buf);
+}
 
 bool send_error_response(FrameSender sender, uint32_t stream_id, int status_code) {
     HeaderBlock blk;
@@ -33,9 +52,12 @@ bool serve_file_response(
 
     HeaderBlock blk;
     blk.status = "200";
+    blk.set_header("server", "hooh-bserve/1.0");
+    blk.set_header("date", get_rfc1123_date());
     if (!file.mime_type.empty()) {
         blk.set_header("content-type", file.mime_type);
     }
+    blk.set_header("content-length", std::to_string(file.size));
 
     if (file.size == 0) {
         // Empty body: HEADERS carrying END_HEADERS|END_STREAM with no DATA frames (§8.2)

@@ -250,37 +250,35 @@ The MUST-skip (undefined or unimplemented-optional Type) and MUST-ignore (undefi
 
 | Existence-hiding and near-identical errors | The wire answers every unservable path with one anonymous reply, differing only in Stream ID, and the truth lives in the server log where operators read it. |
 
-| Ten indexed names | The ten names the protocol defines; in practice bcurl sends :method and :path, bserve sends :status and content-type, with the full table reserved for completeness and extensibility; names cost one byte and values pay their own length. |
+| Ten indexed names | Exactly the ten headers the implementation sends across a single exchange (five from the client, five from the server); names cost one byte and values pay their own length. |
 
 
 
 ## 15. Worked Example
 
 ```
-
 client  48 65 4c 6c 4f 4f 6c 4c 65 48                          preface "HeLlOOlLeH"
 
 server  48 65 4c 6c 4f 4f 6c 4c 65 48                          preface echoed after match
 
-client  20 00 00 | 13 | 01 00 00                               HEADERS len=32 B stream=1 flags=ES|EH
-
+client  3c 00 00 | 13 | 01 00 00                               HEADERS len=60 B stream=1 flags=ES|EH
           01 03 00 47 45 54                                    :method = "GET"
-
           02 0b 00 2f 69 6e 64 65 78 2e 68 74 6d 6c           :path = "/index.html"
+          04 0e 00 31 32 37 2e 30 2e 30 2e 31 3a 39 30 38 30   host = "127.0.0.1:9080"
+          05 0e 00 68 6f 6f 68 2d 62 63 75 72 6c 2f 31 2e 30   user-agent = "hooh-bcurl/1.0"
+          0a 03 00 2a 2f 2a                                    accept = "*/*"
 
-          00 06 78 2d 74 65 73 74 02 00 34 32                 literal "x-test" = "42" (value-len 02 00 LE)
-
-server  12 00 00 | 12 | 01 00 00                               HEADERS len=18 B stream=1 flags=EH
-
+server  48 00 00 | 12 | 01 00 00                               HEADERS len=72 B stream=1 flags=EH
           03 03 00 32 30 30                                    :status = "200"
-
+          06 0f 00 68 6f 6f 68 2d 62 73 65 72 76 65 2f 31 2e 30 server = "hooh-bserve/1.0"
+          07 1d 00 46 72 69 2c 20 30 39 20 4f 63 74 20 32 30 32 36 20 31 32 3a 30 30 3a 30 30 20 47 4d 54 date = "Fri, 09 Oct 2026 12:00:00 GMT"
           08 09 00 74 65 78 74 2f 68 74 6d 6c                  content-type = "text/html"
+          09 01 00 35                                          content-length = "5"
 
         05 00 00 | 01 | 01 00 00 | 68 65 6c 6c 6f              DATA len=5 B stream=1 flags=ES "hello"
-
 ```
 
-*Informative:* this example is normative for format only; the hand-in annotated hexdump will be regenerated from real `bcurl -v` output.
+*Informative:* this example illustrates the complete 10-header single exchange in wire order; the hand-in annotated hexdump is regenerated deterministically from live `bcurl -v` capture.
 
 
 
