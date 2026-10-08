@@ -43,19 +43,19 @@ STATIC_TABLE = {
     3: ":status",
     4: "host",
     5: "user-agent",
-    6: "accept",
-    7: "accept-encoding",
+    6: "server",
+    7: "date",
     8: "content-type",
     9: "content-length",
-    10: "date"
+    10: "accept"
 }
 
 # §8.3 & §8.6 Error Codes
 ERROR_CODES = {
     0x0: "NO_ERROR",
     0x1: "PROTOCOL_ERROR",
-    0x2: "INTERNAL",
-    0x3: "CANCEL"
+    0x2: "CANCELLED",
+    0x3: "INTERNAL"
 }
 
 # ==============================================================================
@@ -353,6 +353,7 @@ def main():
     md.append(f"# Client Invocation with Verbose Wire Tracing:")
     md.append(f"./bcurl -v http://127.0.0.1:{proxy_port}/index.html")
     md.append("```\n")
+    md.append(f"*Note: A transparent TCP proxy sniffer runs on port {proxy_port}, forwarding traffic to `bserve` on port {backend_port} to capture both directions directly from the socket without altering frame timings or payloads.*\n")
 
     md.append("### Live Terminal Output Captured\n")
     md.append("**`bcurl` STDOUT (Received Body Payload):**")

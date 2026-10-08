@@ -250,7 +250,7 @@ The MUST-skip (undefined or unimplemented-optional Type) and MUST-ignore (undefi
 
 | Existence-hiding and near-identical errors | The wire answers every unservable path with one anonymous reply, differing only in Stream ID, and the truth lives in the server log where operators read it. |
 
-| Ten indexed names | Exactly the headers the implementation sends; names cost one byte and values pay their own length. |
+| Ten indexed names | The ten names the protocol defines; in practice bcurl sends :method and :path, bserve sends :status and content-type, with the full table reserved for completeness and extensibility; names cost one byte and values pay their own length. |
 
 
 

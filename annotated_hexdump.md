@@ -14,6 +14,8 @@
 ./bcurl -v http://127.0.0.1:9080/index.html
 ```
 
+*Note: A transparent TCP proxy sniffer runs on port 9080, forwarding traffic to `bserve` on port 9081 to capture both directions directly from the socket without altering frame timings or payloads.*
+
 ### Live Terminal Output Captured
 
 **`bcurl` STDOUT (Received Body Payload):**
